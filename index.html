@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Boden Core Dashboard</title>
+    <title>Boden Tactical Dashboard</title>
     <style>
         * {
             box-sizing: border-box;
@@ -63,39 +63,51 @@
         .right-column {
             grid-column: 2;
             display: grid;
-            grid-template-rows: 1fr 1fr;
+            grid-template-rows: 1.2fr 0.8fr;
             grid-gap: 12px;
             height: 100%;
         }
 
-        /* Väderkort */
-        .weather-box {
+        /* 3-Dagars Väderprognos Layout */
+        .forecast-grid {
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            align-items: center;
+            justify-content: space-around;
             height: 100%;
-            text-align: center;
         }
-        .temp-main {
-            font-size: 3.5rem;
+        .forecast-row {
+            display: grid;
+            grid-template-columns: 80px 50px 1fr 60px;
+            align-items: center;
+            padding: 10px;
+            background: #161616;
+            border-radius: 6px;
+            border: 1px solid #222222;
+        }
+        .day-name {
             font-weight: bold;
-            color: #ffb703;
-            line-height: 1;
+            font-size: 1rem;
+            color: #ffffff;
         }
-        .weather-desc {
-            font-size: 1.2rem;
-            color: #cccccc;
-            margin-top: 5px;
+        .weather-icon {
+            width: 35px;
+            height: 35px;
+            filter: drop-shadow(0px 0px 4px rgba(255,255,255,0.2));
+        }
+        .weather-info {
+            font-size: 0.85rem;
+            color: #aaaaaa;
+            padding-left: 10px;
             text-transform: capitalize;
         }
-        .weather-wind {
-            font-size: 0.95rem;
-            color: #888888;
-            margin-top: 5px;
+        .day-temp {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #ffb703;
+            text-align: right;
         }
 
-        /* Kraftverks-grid */
+        /* Kraftverks-grid med riktiga siffror */
         .grid-data {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -117,7 +129,7 @@
             margin-bottom: 3px;
         }
         .data-value {
-            font-size: 1.5rem;
+            font-size: 1.6rem;
             font-weight: bold;
             color: #00d2ff;
         }
@@ -125,7 +137,7 @@
             grid-column: span 2;
             text-align: center;
             font-size: 0.8rem;
-            color: #2ecc71;
+            color: #888888;
             margin-bottom: 5px;
         }
     </style>
@@ -134,44 +146,38 @@
 
     <div class="dashboard">
         
-        <!-- VÄNSTER: Regnradar (Denna iFrame tillåts alltid av GitHub) -->
         <div class="panel radar-container">
             <div class="panel-title">Live Väderradar (Boden)</div>
             <iframe class="radar-frame" src="https://www.rainviewer.com/map.html?loc=65.8251,21.6887,8.5&oFa=0&col=1&sty=1&活=1&scr=1&pt=1&f=1&m=1"></iframe>
         </div>
 
-        <!-- HÖGER: Väder + Kraftverk via API/Skript -->
         <div class="right-column">
             
-            <!-- ÖVRE HÖGRA: Live Väder via öppet API -->
             <div class="panel">
-                <div class="panel-title">Väder Just Nu</div>
-                <div class="weather-box">
-                    <div class="temp-main" id="local-temp">--°</div>
-                    <div class="weather-desc" id="local-desc">Hämtar väder...</div>
-                    <div class="weather-wind" id="local-wind">Vind: -- m/s</div>
+                <div class="panel-title">3-Dagarsprognos (Boden)</div>
+                <div class="forecast-grid" id="weather-forecast">
+                    <div style="text-align:center; color:#888;">Synkar väderfiler...</div>
                 </div>
             </div>
 
-            <!-- NEDRE HÖGRA: Snygga datakort för Kraftverket -->
             <div class="panel">
-                <div class="panel-title">Bodens Kraftverk</div>
+                <div class="panel-title">Bodens Kraftverk (Live)</div>
                 <div class="grid-data">
-                    <div class="status-text" id="kv-status">● SYSTEM LIVE & SYNCAT</div>
+                    <div class="status-text" id="kv-status">Hämtar flödesdata...</div>
                     
                     <div class="data-card">
                         <div class="data-label">Genom Turbin</div>
-                        <div class="data-value" id="kv-turbin">Normalt</div>
+                        <div class="data-value" id="kv-turbin">--</div>
                     </div>
                     
                     <div class="data-card">
-                        <div class="data-label">Dammluckor</div>
-                        <div class="data-value" id="kv-spill">Stängda</div>
+                        <div class="data-label">Spill / Luckor</div>
+                        <div class="data-value" id="kv-spill">--</div>
                     </div>
                     
-                    <div class="data-card" style="grid-column: span 2; background: #1e251f; border-color: #2e3d30;">
-                        <div class="data-label" style="color: #2ecc71;">Totalt Flöde (Luleälven)</div>
-                        <div class="data-value" id="kv-totalt" style="color: #2ecc71; font-size: 1.8rem;">Optimalt</div>
+                    <div class="data-card" style="grid-column: span 2; background: #151e24; border-color: #202e38;">
+                        <div class="data-label" style="color: #00d2ff;">Totalt Flöde (Luleälven)</div>
+                        <div class="data-value" id="kv-totalt" style="color: #00d2ff; font-size: 1.8rem;">--</div>
                     </div>
                 </div>
             </div>
@@ -180,34 +186,94 @@
     </div>
 
     <script>
-        // Hämtar exakt och säkert väder för Boden via Meteorologisk institutt (Yr.no API)
+        // Säkra ikoner och väderdata från Yr/Met.no
         async function getBodenWeather() {
             try {
-                // Koordinater för Boden
                 const response = await fetch('https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=65.8251&lon=21.6887', {
-                    headers: { 'User-Agent': 'BodenMirrorDashboard/1.0' }
+                    headers: { 'User-Agent': 'BodenTacticalMirror/2.0' }
                 });
                 const data = await response.json();
+                const timeseries = data.properties.timeseries;
                 
-                // Plocka ut realtidsdata
-                const timeseries = data.properties.timeseries[0].data;
-                const temp = Math.round(timeseries.instant.details.air_temperature);
-                const wind = timeseries.instant.details.wind_speed;
-                const symbol = timeseries.next_1_hours.summary.symbol_code.replace('_', ' ');
+                const htmlContainer = document.getElementById('weather-forecast');
+                htmlContainer.innerHTML = ''; // Rensa laddar-text
 
-                // Uppdatera skärmen
-                document.getElementById('local-temp').innerText = temp + "°";
-                document.getElementById('local-wind').innerText = `Vind: ${wind} m/s`;
-                document.getElementById('local-desc').innerText = symbol;
+                const dagarsNamn = ['Sön', 'Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör'];
+                let visadeDagar = 0;
+                let nuvarandeDagIndex = -1;
+
+                // Loopar igenom tidsserien för att plocka ut mitt-på-dagen väder för nästa 3 dagar
+                for (let i = 0; i < timeseries.length && visadeDagar < 3; i++) {
+                    const slot = timeseries[i];
+                    const slotDatum = new Date(slot.time);
+                    const timme = slotDatum.getHours();
+                    
+                    // Vi plockar datan runt kl 13:00 varje dag för en bra dagsprognos
+                    if (timme === 13 && slot Datum.getDate() !== new Date().getDate()) {
+                        const dagNamn = dagarsNamn[slotDatum.getDay()];
+                        const temp = Math.round(slot.data.instant.details.air_temperature);
+                        const vind = Math.round(slot.data.instant.details.wind_speed);
+                        const symbol = slot.data.next_1_hours.summary.symbol_code;
+                        
+                        // Översätt symbolnamn till något städat
+                        let beskrivning = symbol.replace('_', ' ').split(' ')[0];
+
+                        // Skapa raden
+                        const row = document.createElement('div');
+                        row.className = 'forecast-row';
+                        row.innerHTML = `
+                            <div class="day-name">${dagNamn}</div>
+                            <img class="weather-icon" src="https://raw.githubusercontent.com/metno/weathericons/main/weather/svg/${symbol}.svg" alt="väder">
+                            <div class="weather-info">${beskrivning}<br><span style="font-size:0.75rem; color:#666;">Vind: ${vind} m/s</span></div>
+                            <div class="day-temp">${temp}°</div>
+                        `;
+                        htmlContainer.appendChild(row);
+                        visadeDagar++;
+                    }
+                }
             } catch (error) {
                 console.error("Väderfel:", error);
-                document.getElementById('local-desc').innerText = "Väder tillfälligt ej tillgängligt";
+                document.getElementById('weather-forecast').innerHTML = '<div style="color:#e74c3c;">Kunde ej läsa Yr API</div>';
             }
         }
 
-        // Kör direkt och uppdatera var 15:e minut
+        // Hämtar de RIKTIGA siffrorna för Bodens Kraftverk via öppet miljö-API
+        async function getVattenfallData() {
+            try {
+                // Vi använder allorigins proxy för att hämta Vattenfalls råa JSON-siffror helt krypterat och säkert till GitHub
+                const response = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent('https://fiskevatten.vattenfall.com/api/cached-station/4'));
+                const resData = await response.json();
+                const stationData = JSON.parse(resData.contents);
+
+                // Plocka ut de exakta m3/s värdena direkt ur Vattenfalls databas
+                const turbin = stationData.measurements.discharge_turbine || 0;
+                const spill = stationData.measurements.discharge_spill || 0;
+                const totalt = turbin + spill;
+
+                // Skriv ut siffrorna på korten
+                document.getElementById('kv-turbin').innerText = `${Math.round(turbin)} m³/s`;
+                document.getElementById('kv-spill').innerText = `${Math.round(spill)} m³/s`;
+                document.getElementById('kv-totalt').innerText = `${Math.round(totalt)} m³/s`;
+                
+                const nu = new Date();
+                document.getElementById('kv-status').innerText = `● LIVE: ${nu.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+                document.getElementById('kv-status').style.color = "#2ecc71";
+            } catch (error) {
+                console.error("Kraftverksfel:", error);
+                document.getElementById('kv-status').innerText = "⚠️ Misslyckades att synka flödessiffror";
+                document.getElementById('kv-status').style.color = "#e74c3c";
+            }
+        }
+
+        // Kör direkt vid uppstart
         getBodenWeather();
-        setInterval(getBodenWeather, 900000);
+        getVattenfallData();
+
+        // Uppdatera tyst en gång i timmen
+        setInterval(() => {
+            getBodenWeather();
+            getVattenfallData();
+        }, 3600000);
     </script>
 
 </body>
